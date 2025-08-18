@@ -3,14 +3,14 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { KanbanColumn as KanbanColumnType, KanbanCard as KanbanCardType } from '@/types/kanban';
-import { KanbanCard } from './KanbanCard';
+import { Column, Task } from '@/hooks/useSupabaseData';
+import { TaskCard } from './TaskCard';
 import { cn } from '@/lib/utils';
 
 interface KanbanColumnProps {
-  column: KanbanColumnType;
+  column: Column & { tasks: Task[] };
   onAddCard: (columnId: string) => void;
-  onEditCard?: (card: KanbanCardType) => void;
+  onEditCard?: (task: Task) => void;
 }
 
 export function KanbanColumn({ column, onAddCard, onEditCard }: KanbanColumnProps) {
@@ -32,7 +32,7 @@ export function KanbanColumn({ column, onAddCard, onEditCard }: KanbanColumnProp
           />
           <h2 className="font-semibold text-lg text-foreground">{column.title}</h2>
           <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded-full">
-            {column.cards.length}
+            {column.tasks.length}
           </span>
         </div>
         
@@ -49,19 +49,19 @@ export function KanbanColumn({ column, onAddCard, onEditCard }: KanbanColumnProp
       {/* Cards Container */}
       <div ref={setNodeRef} className="flex-1 space-y-3 min-h-[400px]">
         <SortableContext 
-          items={column.cards.map(card => card.id)} 
+          items={column.tasks.map(task => task.id)} 
           strategy={verticalListSortingStrategy}
         >
-          {column.cards.map((card) => (
-            <KanbanCard 
-              key={card.id} 
-              card={card} 
-              onEdit={onEditCard}
+          {column.tasks.map((task) => (
+            <TaskCard 
+              key={task.id} 
+              task={task} 
+              onEdit={onEditCard!}
             />
           ))}
         </SortableContext>
         
-        {column.cards.length === 0 && (
+        {column.tasks.length === 0 && (
           <div className="flex-1 flex items-center justify-center text-muted-foreground border-2 border-dashed border-muted rounded-lg py-12">
             <div className="text-center">
               <Plus className="w-8 h-8 mx-auto mb-2 opacity-50" />
