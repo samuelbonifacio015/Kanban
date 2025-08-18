@@ -118,7 +118,31 @@ export function useSupabaseData() {
   // Create board mutation
   const createBoardMutation = useMutation({
     mutationFn: async (title: string) => {
-      if (!user?.id) throw new Error('User not authenticated');
+      if (!user?.id) throw new Error('Usuario no autenticado');
+
+      // Ensure user exists in users table first
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!userData) {
+        console.log('Creating user in users table...');
+        const { error: createUserError } = await supabase
+          .from('users')
+          .insert({
+            id: user.id,
+            email: user.email || '',
+            name: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuario',
+            avatar_url: user.user_metadata?.avatar_url
+          });
+
+        if (createUserError) {
+          console.error('Error creating user:', createUserError);
+          throw new Error('Error al crear el perfil de usuario');
+        }
+      }
 
       const { data: board, error: boardError } = await supabase
         .from('boards')
@@ -130,9 +154,9 @@ export function useSupabaseData() {
 
       // Create default columns
       const defaultColumns = [
-        { board_id: board.id, title: 'To Do', position: 0, color: '#3b82f6' },
-        { board_id: board.id, title: 'In Progress', position: 1, color: '#f59e0b' },
-        { board_id: board.id, title: 'Done', position: 2, color: '#10b981' }
+        { board_id: board.id, title: 'Por Hacer', position: 0, color: '#3b82f6' },
+        { board_id: board.id, title: 'En Progreso', position: 1, color: '#f59e0b' },
+        { board_id: board.id, title: 'Completado', position: 2, color: '#10b981' }
       ];
 
       const { error: columnsError } = await supabase
@@ -146,11 +170,12 @@ export function useSupabaseData() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boards'] });
       toast({
-        title: "Board Created",
-        description: "Your new board has been created successfully.",
+        title: "Tablero Creado",
+        description: "Tu nuevo tablero ha sido creado exitosamente.",
       });
     },
     onError: (error) => {
+      console.error('Error creating board:', error);
       toast({
         title: "Error",
         description: error.message,

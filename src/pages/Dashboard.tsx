@@ -53,7 +53,8 @@ export default function Dashboard() {
   // Create initial board if none exists
   useEffect(() => {
     if (!boardsLoading && boards && boards.length === 0) {
-      createBoard('My First Board');
+      console.log('No boards found, creating first board...');
+      createBoard('Mi Primer Tablero');
     }
   }, [boards, boardsLoading, createBoard]);
 
