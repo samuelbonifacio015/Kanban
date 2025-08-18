@@ -23,6 +23,7 @@ export interface KanbanColumn {
 export interface KanbanBoard {
   id: string;
   title: string;
+  description?: string;
   columns: KanbanColumn[];
   createdAt: string;
   updatedAt: string;

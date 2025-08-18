@@ -13,10 +13,14 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard } from './KanbanCard';
 import { CardModal } from './CardModal';
+import { BoardSettingsModal } from './BoardSettingsModal';
+import { AddColumnModal } from './AddColumnModal';
 import { Button } from '@/components/ui/button';
-import { Plus, Settings } from 'lucide-react';
+import { Plus, Settings, LogOut, User } from 'lucide-react';
 import { KanbanBoard as KanbanBoardType, KanbanCard as KanbanCardType, KanbanColumn as KanbanColumnType } from '@/types/kanban';
 import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 interface KanbanBoardProps {
   board: KanbanBoardType;
@@ -29,6 +33,11 @@ export function KanbanBoard({ board, onUpdateBoard }: KanbanBoardProps) {
   const [selectedCard, setSelectedCard] = useState<KanbanCardType | undefined>();
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [activeColumnId, setActiveColumnId] = useState<string>('');
+  const [isBoardSettingsOpen, setIsBoardSettingsOpen] = useState(false);
+  const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
+  
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -171,6 +180,68 @@ export function KanbanBoard({ board, onUpdateBoard }: KanbanBoardProps) {
     onUpdateBoard(updatedBoard);
   }, [board, modalMode, selectedCard, activeColumnId, onUpdateBoard]);
 
+  const handleAddColumn = (columnData: Omit<KanbanColumnType, 'id'>) => {
+    const newColumn: KanbanColumnType = {
+      id: uuidv4(),
+      ...columnData
+    };
+    
+    const updatedBoard = {
+      ...board,
+      columns: [...board.columns, newColumn],
+      updatedAt: new Date().toISOString()
+    };
+    
+    onUpdateBoard(updatedBoard);
+    toast({
+      title: "Column Added",
+      description: `"${columnData.title}" column has been created.`,
+    });
+  };
+
+  const handleExportBoard = () => {
+    const dataStr = JSON.stringify(board, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `kanban-board-${new Date().toISOString().split('T')[0]}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    
+    toast({
+      title: "Board Exported",
+      description: "Your board has been downloaded as JSON file.",
+    });
+  };
+
+  const handleImportBoard = (importedBoard: KanbanBoardType) => {
+    const updatedBoard = {
+      ...importedBoard,
+      id: board.id, // Keep current board ID
+      updatedAt: new Date().toISOString()
+    };
+    onUpdateBoard(updatedBoard);
+  };
+
+  const handleClearBoard = () => {
+    const clearedBoard = {
+      ...board,
+      columns: board.columns.map(col => ({ ...col, cards: [] })),
+      updatedAt: new Date().toISOString()
+    };
+    onUpdateBoard(clearedBoard);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Signed Out",
+      description: "You have been successfully signed out.",
+    });
+  };
+
   return (
     <div className="min-h-screen p-6">
       <DndContext
@@ -184,15 +255,36 @@ export function KanbanBoard({ board, onUpdateBoard }: KanbanBoardProps) {
           <div>
             <h1 className="text-3xl font-bold text-foreground">{board.title}</h1>
             <p className="text-muted-foreground mt-1">
-              Manage your project tasks and workflow
+              {board.description || 'Manage your project tasks and workflow'}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="glass">
+            {user && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <User className="w-4 h-4" />
+                {user.email}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="ml-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+            <Button 
+              variant="outline" 
+              className="glass"
+              onClick={() => setIsBoardSettingsOpen(true)}
+            >
               <Settings className="w-4 h-4 mr-2" />
               Board Settings
             </Button>
-            <Button className="bg-primary hover:bg-primary/90">
+            <Button 
+              className="bg-primary hover:bg-primary/90"
+              onClick={() => setIsAddColumnOpen(true)}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Add Column
             </Button>
@@ -226,6 +318,22 @@ export function KanbanBoard({ board, onUpdateBoard }: KanbanBoardProps) {
         onSave={handleSaveCard}
         card={selectedCard}
         mode={modalMode}
+      />
+
+      <BoardSettingsModal
+        isOpen={isBoardSettingsOpen}
+        onClose={() => setIsBoardSettingsOpen(false)}
+        board={board}
+        onUpdateBoard={onUpdateBoard}
+        onExportBoard={handleExportBoard}
+        onImportBoard={handleImportBoard}
+        onClearBoard={handleClearBoard}
+      />
+
+      <AddColumnModal
+        isOpen={isAddColumnOpen}
+        onClose={() => setIsAddColumnOpen(false)}
+        onAddColumn={handleAddColumn}
       />
     </div>
   );
