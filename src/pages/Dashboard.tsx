@@ -44,12 +44,22 @@ export default function Dashboard() {
     })
   );
 
-  // Load the first board on mount
+  // Load the first board on mount and refresh when boards change
   useEffect(() => {
     if (boards && boards.length > 0 && !currentBoard) {
       fetchBoardWithData(boards[0].id).then(setCurrentBoard);
     }
   }, [boards, currentBoard, fetchBoardWithData]);
+
+  // Refresh current board data every 2 seconds for real-time updates
+  useEffect(() => {
+    if (currentBoard?.id) {
+      const interval = setInterval(() => {
+        fetchBoardWithData(currentBoard.id).then(setCurrentBoard);
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [currentBoard?.id, fetchBoardWithData]);
 
   // Create initial board if none exists
   useEffect(() => {
@@ -95,7 +105,7 @@ export default function Dashboard() {
     setIsTaskModalOpen(true);
   };
 
-  const handleSaveTask = (taskData: Partial<Task>) => {
+  const handleSaveTask = async (taskData: Partial<Task>) => {
     if (modalMode === 'create') {
       const newTask = {
         ...taskData,
@@ -103,16 +113,27 @@ export default function Dashboard() {
         position: currentBoard?.columns.find(c => c.id === activeColumnId)?.tasks.length || 0
       } as Omit<Task, 'id' | 'created_at' | 'updated_at'>;
       
-      createTask(newTask);
+      await createTask(newTask);
     } else if (selectedTask) {
-      updateTask({ id: selectedTask.id, ...taskData });
+      await updateTask({ id: selectedTask.id, ...taskData });
     }
+    
+    // Refresh board data immediately
+    if (currentBoard?.id) {
+      const updatedBoard = await fetchBoardWithData(currentBoard.id);
+      setCurrentBoard(updatedBoard);
+    }
+    
     setIsTaskModalOpen(false);
   };
 
-  const handleAddColumn = (columnData: { title: string; color: string }) => {
+  const handleAddColumn = async (columnData: { title: string; color: string }) => {
     if (currentBoard) {
-      createColumn({ ...columnData, boardId: currentBoard.id });
+      await createColumn({ ...columnData, boardId: currentBoard.id });
+      
+      // Refresh board data immediately
+      const updatedBoard = await fetchBoardWithData(currentBoard.id);
+      setCurrentBoard(updatedBoard);
     }
     setIsAddColumnOpen(false);
   };

@@ -196,7 +196,9 @@ export function useSupabaseData() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['boards'] });
+      // Refresh current board data immediately
       queryClient.invalidateQueries({ queryKey: ['board'] });
     }
   });
@@ -214,8 +216,14 @@ export function useSupabaseData() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['boards'] });
+      // Refresh current board data immediately
       queryClient.invalidateQueries({ queryKey: ['board'] });
+      toast({
+        title: "Tarea Actualizada",
+        description: "La tarea ha sido actualizada exitosamente.",
+      });
     }
   });
 
@@ -305,7 +313,9 @@ export function useSupabaseData() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['boards'] });
+      // Refresh current board data immediately
       queryClient.invalidateQueries({ queryKey: ['board'] });
       toast({
         title: "Columna Creada",
