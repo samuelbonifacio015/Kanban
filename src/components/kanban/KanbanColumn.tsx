@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react';
 import { Column, Task } from '@/hooks/useSupabaseData';
 import { TaskCard } from './TaskCard';
 import { cn } from '@/lib/utils';
+import { useOptimizedAnimation } from '@/hooks/usePerformance';
 
 interface KanbanColumnProps {
   column: Column & { tasks: Task[] };
@@ -19,10 +20,14 @@ export function KanbanColumn({ column, onAddCard, onEditCard, onUpdateTask }: Ka
     id: column.id,
   });
 
+  const { getAnimationClass, getTransitionClass } = useOptimizedAnimation();
+
   return (
     <Card className={cn(
-      "glass p-4 min-h-[600px] w-80 flex flex-col animate-fade-in",
-      isOver && "ring-2 ring-primary/50 shadow-glow"
+      "glass p-4 min-h-[600px] w-80 flex flex-col",
+      getAnimationClass("animate-fade-in", ""),
+      getTransitionClass("transition-normal", ""),
+      isOver && "ring-2 ring-primary/50"
     )}>
       {/* Column Header */}
       <div className="flex items-center justify-between mb-4">

@@ -53,37 +53,30 @@ All colors MUST be HSL.
     --priority-high: 0 75% 60%;
     --priority-critical: 320 90% 65%;
 
-    /* Gradients */
+    /* Gradientes simplificados para mejor rendimiento */
     --gradient-primary: linear-gradient(135deg, hsl(262 80% 65%), hsl(280 60% 60%));
     --gradient-secondary: linear-gradient(135deg, hsl(240 15% 18%), hsl(240 20% 22%));
     --gradient-background: linear-gradient(135deg, hsl(240 25% 9%), hsl(250 20% 12%));
     --gradient-glass: linear-gradient(135deg, hsl(240 20% 12% / 0.8), hsl(240 25% 15% / 0.6));
 
-    /* Shadows */
-    --shadow-glass: 0 8px 32px 0 hsl(0 0% 0% / 0.37);
-    --shadow-card: 0 4px 16px 0 hsl(0 0% 0% / 0.25);
-    --shadow-glow: 0 0 20px hsl(262 80% 65% / 0.3);
+    /* Sombras optimizadas */
+    --shadow-glass: 0 4px 16px 0 hsl(0 0% 0% / 0.25);
+    --shadow-card: 0 2px 8px 0 hsl(0 0% 0% / 0.15);
 
-    /* Animations */
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-bounce: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    /* Transiciones optimizadas para rendimiento */
+    --transition-fast: all 0.15s ease-out;
+    --transition-normal: all 0.2s ease-out;
+    --transition-slow: all 0.3s ease-out;
 
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -100,11 +93,11 @@ All colors MUST be HSL.
     --input: 240 10% 90%;
     --gradient-background: linear-gradient(135deg, hsl(0 0% 98%), hsl(240 5% 96%));
     --gradient-glass: linear-gradient(135deg, hsl(0 0% 100% / 0.8), hsl(240 5% 96% / 0.6));
-    --shadow-glass: 0 8px 32px 0 hsl(0 0% 0% / 0.1);
-    --shadow-card: 0 4px 16px 0 hsl(0 0% 0% / 0.05);
+    --shadow-glass: 0 4px 16px 0 hsl(0 0% 0% / 0.08);
+    --shadow-card: 0 2px 8px 0 hsl(0 0% 0% / 0.04);
   }
 
-  /* Forest Theme */
+  /* Temas optimizados para rendimiento */
   .theme-forest {
     --primary: 120 60% 40%;
     --primary-glow: 120 70% 50%;
@@ -116,7 +109,6 @@ All colors MUST be HSL.
     --gradient-glass: linear-gradient(135deg, hsl(115 25% 12% / 0.8), hsl(120 20% 15% / 0.6));
   }
 
-  /* Sunrise Theme */
   .theme-sunrise {
     --primary: 25 90% 60%;
     --primary-glow: 35 95% 70%;
@@ -128,7 +120,6 @@ All colors MUST be HSL.
     --gradient-glass: linear-gradient(135deg, hsl(25 35% 15% / 0.8), hsl(30 30% 18% / 0.6));
   }
 
-  /* Beach Theme */
   .theme-beach {
     --primary: 195 85% 55%;
     --primary-glow: 200 90% 65%;
@@ -140,7 +131,6 @@ All colors MUST be HSL.
     --gradient-glass: linear-gradient(135deg, hsl(195 25% 16% / 0.8), hsl(200 20% 20% / 0.6));
   }
 
-  /* Sunset Theme */
   .theme-sunset {
     --primary: 340 85% 60%;
     --primary-glow: 350 90% 70%;
@@ -163,28 +153,32 @@ All colors MUST be HSL.
     @apply text-foreground min-h-screen;
   }
 
-  /* Glass morphism utilities */
+  /* Glass morphism utilities optimizadas */
   .glass {
     background: var(--gradient-glass);
-    backdrop-filter: blur(16px);
+    backdrop-filter: blur(8px);
     border: 1px solid hsl(var(--border));
     box-shadow: var(--shadow-glass);
   }
 
   .card-glass {
     background: hsl(var(--card) / 0.8);
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(4px);
     border: 1px solid hsl(var(--border) / 0.5);
     box-shadow: var(--shadow-card);
   }
 
-  /* Animation utilities */
-  .transition-smooth {
-    transition: var(--transition-smooth);
+  /* Transiciones optimizadas */
+  .transition-fast {
+    transition: var(--transition-fast);
   }
 
-  .transition-bounce {
-    transition: var(--transition-bounce);
+  .transition-normal {
+    transition: var(--transition-normal);
+  }
+
+  .transition-slow {
+    transition: var(--transition-slow);
   }
 
   /* Priority colors */
@@ -204,12 +198,12 @@ All colors MUST be HSL.
     @apply bg-priority-critical/20 text-priority-critical border-priority-critical/30;
   }
 
-  /* Performance optimizations */
+  /* Optimizaciones de rendimiento */
   .will-change-transform {
     will-change: transform;
   }
 
-  /* Reduce animations on low-end devices */
+  /* Reducir animaciones en dispositivos de bajos recursos */
   @media (prefers-reduced-motion: reduce) {
     * {
       animation-duration: 0.01ms !important;
@@ -218,15 +212,49 @@ All colors MUST be HSL.
     }
   }
 
-  /* Memory optimization - prevent layout shifts */
+  /* Detección de dispositivos de bajos recursos */
+  @media (max-width: 768px), (max-device-pixel-ratio: 1) {
+    .glass {
+      backdrop-filter: blur(4px);
+    }
+    
+    .card-glass {
+      backdrop-filter: blur(2px);
+    }
+  }
+
+  /* Optimización de memoria - prevenir cambios de layout */
   .container-optimized {
     contain: layout;
   }
 
-  /* GPU acceleration for smooth animations */
+  /* Aceleración GPU para animaciones suaves */
   .gpu-accelerated {
     transform: translateZ(0);
     backface-visibility: hidden;
     perspective: 1000px;
+  }
+
+  /* Clases de rendimiento para dispositivos de bajos recursos */
+  .performance-mode {
+    /* Reducir efectos visuales complejos */
+    backdrop-filter: none;
+    box-shadow: none;
+    
+    /* Simplificar gradientes */
+    background: hsl(var(--card));
+    
+    /* Reducir transiciones */
+    transition: none;
+  }
+
+  /* Detección automática de rendimiento */
+  @media (prefers-reduced-motion: reduce), (max-width: 480px) {
+    .performance-mode {
+      backdrop-filter: none !important;
+      box-shadow: none !important;
+      transition: none !important;
+      animation: none !important;
+    }
   }
 }

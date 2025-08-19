@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "@/hooks/useAuth";
+import { usePerformanceMode } from "@/hooks/usePerformance";
 
 const queryClient = new QueryClient();
 
@@ -39,10 +40,17 @@ function ProtectedRoutes() {
   );
 }
 
+// Componente para aplicar optimizaciones de rendimiento
+function PerformanceOptimizer() {
+  usePerformanceMode();
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="dark" storageKey="kanban-theme">
       <TooltipProvider>
+        <PerformanceOptimizer />
         <Toaster />
         <Sonner />
         <BrowserRouter>

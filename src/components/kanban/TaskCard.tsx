@@ -9,13 +9,13 @@ import { Calendar, Download, Edit, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { Task } from '@/hooks/useSupabaseData';
 import { useToast } from '@/hooks/use-toast';
+import { useOptimizedAnimation } from '@/hooks/usePerformance';
 
 interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
   onUpdate?: (task: Partial<Task>) => void;
 }
-
 
 const priorityIcons = {
   low: '🟢',
@@ -28,6 +28,7 @@ export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const { toast } = useToast();
+  const { getTransitionClass } = useOptimizedAnimation();
 
   const {
     attributes,
@@ -117,7 +118,8 @@ export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`group cursor-grab active:cursor-grabbing hover:shadow-lg transition-all duration-200 bg-card/80 backdrop-blur-sm border border-border/50 ${
+      className={`group cursor-grab active:cursor-grabbing bg-card/80 backdrop-blur-sm border border-border/50 ${
+        getTransitionClass("hover:shadow-lg transition-all duration-200", ""),
         isDragging ? 'rotate-2 opacity-90' : ''
       }`}
     >
@@ -136,7 +138,9 @@ export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
               />
             ) : (
               <h3 
-                className="font-medium text-sm leading-tight cursor-pointer hover:text-primary transition-colors"
+                className={`font-medium text-sm leading-tight cursor-pointer ${
+                  getTransitionClass("hover:text-primary transition-colors", "")
+                }`}
                 onDoubleClick={() => setIsEditing(true)}
               >
                 {task.title}
@@ -144,7 +148,9 @@ export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
             )}
           </div>
           
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className={`flex gap-1 opacity-0 group-hover:opacity-100 ${
+            getTransitionClass("transition-opacity", "")
+          }`}>
             <Button
               variant="ghost"
               size="icon"
@@ -202,36 +208,19 @@ export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
           </div>
         )}
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          {task.assignee && (
-            <div className="flex items-center gap-1">
-              <Avatar className="h-5 w-5">
-                <AvatarFallback className="text-xs">
-                  {task.assignee.split(' ').map(n => n[0]).join('').toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span>{task.assignee}</span>
-            </div>
-          )}
-          
-          <div className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            <span>{format(new Date(task.created_at), 'MMM dd')}</span>
+        {task.assignee && (
+          <div className="flex items-center gap-2">
+            <User className="w-3 h-3 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">{task.assignee}</span>
           </div>
-        </div>
+        )}
 
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(task);
-          }}
-        >
-          <Edit className="h-3 w-3 mr-1" />
-          Edit Details
-        </Button>
+        {task.created_at && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Calendar className="w-3 h-3" />
+            <span>Created: {format(new Date(task.created_at), 'MMM dd')}</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
