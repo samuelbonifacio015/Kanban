@@ -2,25 +2,39 @@ import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, MoreVertical, Trash2 } from 'lucide-react';
 import { Column, Task } from '@/hooks/useSupabaseData';
 import { TaskCard } from './TaskCard';
 import { cn } from '@/lib/utils';
 import { useOptimizedAnimation } from '@/hooks/usePerformance';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface KanbanColumnProps {
   column: Column & { tasks: Task[] };
   onAddCard: (columnId: string) => void;
   onEditCard?: (task: Task) => void;
   onUpdateTask?: (task: Partial<Task>) => void;
+  onDeleteColumn?: (columnId: string) => void;
 }
 
-export function KanbanColumn({ column, onAddCard, onEditCard, onUpdateTask }: KanbanColumnProps) {
+export function KanbanColumn({ column, onAddCard, onEditCard, onUpdateTask, onDeleteColumn }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
 
   const { getAnimationClass, getTransitionClass } = useOptimizedAnimation();
+
+  const handleDeleteColumn = () => {
+    if (onDeleteColumn && window.confirm(`¿Estás seguro de que quieres eliminar la columna "${column.title}"? Esta acción eliminará todas las tareas y no se puede deshacer.`)) {
+      onDeleteColumn(column.id);
+    }
+  };
 
   return (
     <Card className={cn(
@@ -42,14 +56,34 @@ export function KanbanColumn({ column, onAddCard, onEditCard, onUpdateTask }: Ka
           </span>
         </div>
         
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onAddCard(column.id)}
-          className="hover:bg-primary/10 text-primary"
-        >
-          <Plus className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onAddCard(column.id)}
+            className="hover:bg-primary/10 text-primary"
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hover:bg-muted/50 text-muted-foreground"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleDeleteColumn} className="text-destructive">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Eliminar Columna
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Cards Container */}

@@ -22,6 +22,7 @@ import { AddColumnModal } from '@/components/kanban/AddColumnModal';
 import { BoardSettingsModal } from '@/components/kanban/BoardSettingsModal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Dashboard() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -33,7 +34,7 @@ export default function Dashboard() {
   const [isBoardSettingsOpen, setIsBoardSettingsOpen] = useState(false);
   const [currentBoard, setCurrentBoard] = useState<BoardWithData | null>(null);
   
-  const { boards, boardsLoading, fetchBoardWithData, createBoard, createTask, updateTask, createColumn } = useSupabaseData();
+  const { boards, boardsLoading, fetchBoardWithData, createBoard, createTask, updateTask, createColumn, deleteColumn } = useSupabaseData();
   const { toast } = useToast();
 
   const sensors = useSensors(
@@ -51,15 +52,8 @@ export default function Dashboard() {
     }
   }, [boards, currentBoard, fetchBoardWithData]);
 
-  // Refresh current board data every 2 seconds for real-time updates
-  useEffect(() => {
-    if (currentBoard?.id) {
-      const interval = setInterval(() => {
-        fetchBoardWithData(currentBoard.id).then(setCurrentBoard);
-      }, 2000);
-      return () => clearInterval(interval);
-    }
-  }, [currentBoard?.id, fetchBoardWithData]);
+  // Remove the 2-second interval that was interfering with real-time updates
+  // Real-time updates are now handled by Supabase subscriptions in useSupabaseData
 
   // Create initial board if none exists
   useEffect(() => {
@@ -105,6 +99,39 @@ export default function Dashboard() {
     setIsTaskModalOpen(true);
   };
 
+  const handleUpdateTask = async (taskUpdates: Partial<Task>) => {
+    try {
+      await updateTask(taskUpdates);
+      
+      // Update local state immediately for better UX
+      if (currentBoard) {
+        setCurrentBoard(prev => {
+          if (!prev) return prev;
+          
+          const updatedBoard = { ...prev };
+          const column = updatedBoard.columns.find(c => 
+            c.tasks.some(t => t.id === taskUpdates.id)
+          );
+          
+          if (column) {
+            const taskIndex = column.tasks.findIndex(t => t.id === taskUpdates.id);
+            if (taskIndex !== -1) {
+              column.tasks[taskIndex] = { ...column.tasks[taskIndex], ...taskUpdates };
+            }
+          }
+          return updatedBoard;
+        });
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la tarea.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSaveTask = async (taskData: Partial<Task>) => {
     if (modalMode === 'create') {
       const newTask = {
@@ -116,9 +143,26 @@ export default function Dashboard() {
       await createTask(newTask);
     } else if (selectedTask) {
       await updateTask({ id: selectedTask.id, ...taskData });
+      
+      // Update local state immediately for better UX
+      if (currentBoard) {
+        setCurrentBoard(prev => {
+          if (!prev) return prev;
+          
+          const updatedBoard = { ...prev };
+          const column = updatedBoard.columns.find(c => c.id === selectedTask.column_id);
+          if (column) {
+            const taskIndex = column.tasks.findIndex(t => t.id === selectedTask.id);
+            if (taskIndex !== -1) {
+              column.tasks[taskIndex] = { ...column.tasks[taskIndex], ...taskData };
+            }
+          }
+          return updatedBoard;
+        });
+      }
     }
     
-    // Refresh board data immediately
+    // Refresh board data to ensure consistency
     if (currentBoard?.id) {
       const updatedBoard = await fetchBoardWithData(currentBoard.id);
       setCurrentBoard(updatedBoard);
@@ -136,6 +180,209 @@ export default function Dashboard() {
       setCurrentBoard(updatedBoard);
     }
     setIsAddColumnOpen(false);
+  };
+
+  const handleDeleteColumn = async (columnId: string) => {
+    if (currentBoard) {
+      await deleteColumn(columnId);
+      
+      // Refresh board data immediately
+      const updatedBoard = await fetchBoardWithData(currentBoard.id);
+      setCurrentBoard(updatedBoard);
+    }
+  };
+
+  const handleUpdateBoard = async (updatedBoard: any) => {
+    if (currentBoard) {
+      // Update the board in Supabase
+      const { error } = await supabase
+        .from('boards')
+        .update({
+          title: updatedBoard.title,
+          description: updatedBoard.description,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentBoard.id);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "No se pudo actualizar el tablero.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update local state
+      setCurrentBoard(prev => prev ? {
+        ...prev,
+        title: updatedBoard.title,
+        description: updatedBoard.description,
+        updated_at: updatedBoard.updatedAt
+      } : null);
+
+      toast({
+        title: "Tablero Actualizado",
+        description: "La configuración del tablero ha sido guardada exitosamente.",
+      });
+    }
+  };
+
+  const handleExportBoard = () => {
+    if (currentBoard) {
+      const boardData = {
+        title: currentBoard.title,
+        description: currentBoard.description || '',
+        columns: currentBoard.columns.map(col => ({
+          title: col.title,
+          color: col.color,
+          tasks: col.tasks.map(task => ({
+            title: task.title,
+            description: task.description,
+            priority: task.priority,
+            tags: task.tags,
+            assignee: task.assignee
+          }))
+        })),
+        exportedAt: new Date().toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(boardData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentBoard.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_export.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Tablero Exportado",
+        description: "El tablero ha sido exportado exitosamente.",
+      });
+    }
+  };
+
+  const handleImportBoard = async (importedData: any) => {
+    if (currentBoard) {
+      try {
+        // Update board title and description
+        const { error: boardError } = await supabase
+          .from('boards')
+          .update({
+            title: importedData.title || currentBoard.title,
+            description: importedData.description || currentBoard.description,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', currentBoard.id);
+
+        if (boardError) throw boardError;
+
+        // Clear existing columns and tasks
+        const { error: clearTasksError } = await supabase
+          .from('tasks')
+          .delete()
+          .in('column_id', currentBoard.columns.map(c => c.id));
+
+        if (clearTasksError) throw clearTasksError;
+
+        const { error: clearColumnsError } = await supabase
+          .from('columns')
+          .delete()
+          .eq('board_id', currentBoard.id);
+
+        if (clearColumnsError) throw clearColumnsError;
+
+        // Create new columns and tasks
+        if (importedData.columns && Array.isArray(importedData.columns)) {
+          for (let i = 0; i < importedData.columns.length; i++) {
+            const col = importedData.columns[i];
+            
+            // Create column
+            const { data: newColumn, error: colError } = await supabase
+              .from('columns')
+              .insert([{
+                board_id: currentBoard.id,
+                title: col.title,
+                color: col.color || '#3b82f6',
+                position: i
+              }])
+              .select()
+              .single();
+
+            if (colError) throw colError;
+
+            // Create tasks for this column
+            if (col.tasks && Array.isArray(col.tasks)) {
+              for (let j = 0; j < col.tasks.length; j++) {
+                const task = col.tasks[j];
+                
+                const { error: taskError } = await supabase
+                  .from('tasks')
+                  .insert([{
+                    column_id: newColumn.id,
+                    title: task.title,
+                    description: task.description || '',
+                    priority: task.priority || 'medium',
+                    tags: task.tags || [],
+                    assignee: task.assignee || null,
+                    position: j
+                  }]);
+
+                if (taskError) throw taskError;
+              }
+            }
+          }
+        }
+
+        // Refresh board data
+        const updatedBoard = await fetchBoardWithData(currentBoard.id);
+        setCurrentBoard(updatedBoard);
+
+        toast({
+          title: "Tablero Importado",
+          description: "El tablero ha sido importado exitosamente.",
+        });
+      } catch (error) {
+        console.error('Error importing board:', error);
+        toast({
+          title: "Error de Importación",
+          description: "No se pudo importar el tablero.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleClearBoard = async () => {
+    if (currentBoard) {
+      try {
+        // Clear all tasks
+        const { error: tasksError } = await supabase
+          .from('tasks')
+          .delete()
+          .in('column_id', currentBoard.columns.map(c => c.id));
+
+        if (tasksError) throw tasksError;
+
+        // Refresh board data
+        const updatedBoard = await fetchBoardWithData(currentBoard.id);
+        setCurrentBoard(updatedBoard);
+
+        toast({
+          title: "Tablero Limpiado",
+          description: "Todas las tareas han sido eliminadas del tablero.",
+        });
+      } catch (error) {
+        console.error('Error clearing board:', error);
+        toast({
+          title: "Error",
+          description: "No se pudo limpiar el tablero.",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   if (boardsLoading) {
@@ -202,7 +449,8 @@ export default function Dashboard() {
               column={column}
               onAddCard={handleAddTask}
               onEditCard={handleEditTask}
-              onUpdateTask={updateTask}
+              onUpdateTask={handleUpdateTask}
+              onDeleteColumn={handleDeleteColumn}
             />
           ))}
         </div>
@@ -210,7 +458,7 @@ export default function Dashboard() {
         <DragOverlay>
           {activeTask ? (
             <div className="rotate-2 opacity-90">
-              <TaskCard task={activeTask} onEdit={handleEditTask} onUpdate={updateTask} />
+              <TaskCard task={activeTask} onEdit={handleEditTask} onUpdate={handleUpdateTask} />
             </div>
           ) : null}
         </DragOverlay>
@@ -235,10 +483,10 @@ export default function Dashboard() {
           createdAt: currentBoard.created_at,
           updatedAt: currentBoard.updated_at
         }}
-        onUpdateBoard={() => {}}
-        onExportBoard={() => {}}
-        onImportBoard={() => {}}
-        onClearBoard={() => {}}
+        onUpdateBoard={handleUpdateBoard}
+        onExportBoard={handleExportBoard}
+        onImportBoard={handleImportBoard}
+        onClearBoard={handleClearBoard}
       />
 
       <AddColumnModal

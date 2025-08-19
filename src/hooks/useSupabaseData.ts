@@ -197,9 +197,21 @@ export function useSupabaseData() {
       return data;
     },
     onSuccess: (data) => {
+      // Invalidate all board-related queries
       queryClient.invalidateQueries({ queryKey: ['boards'] });
-      // Refresh current board data immediately
       queryClient.invalidateQueries({ queryKey: ['board'] });
+      toast({
+        title: "Tarea Creada",
+        description: "Nueva tarea agregada al tablero.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error creating task:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo crear la tarea.",
+        variant: "destructive",
+      });
     }
   });
 
@@ -208,7 +220,10 @@ export function useSupabaseData() {
     mutationFn: async ({ id, ...updates }: Partial<Task> & { id: string }) => {
       const { data, error } = await supabase
         .from('tasks')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single();
@@ -217,12 +232,20 @@ export function useSupabaseData() {
       return data;
     },
     onSuccess: (data) => {
+      // Invalidate all board-related queries
       queryClient.invalidateQueries({ queryKey: ['boards'] });
-      // Refresh current board data immediately
       queryClient.invalidateQueries({ queryKey: ['board'] });
       toast({
         title: "Tarea Actualizada",
         description: "La tarea ha sido actualizada exitosamente.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la tarea.",
+        variant: "destructive",
       });
     }
   });
@@ -242,7 +265,7 @@ export function useSupabaseData() {
           filter: `user_id=eq.${user.id}`
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['boards'] });
+          queryClient.invalidateQueries({ queryKey: ['boards', user.id] });
         }
       )
       .subscribe();
@@ -256,8 +279,17 @@ export function useSupabaseData() {
           schema: 'public',
           table: 'tasks'
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['board'] });
+        (payload) => {
+          // Invalidate specific queries based on the change
+          if (payload.eventType === 'INSERT') {
+            queryClient.invalidateQueries({ queryKey: ['boards'] });
+          } else if (payload.eventType === 'UPDATE') {
+            queryClient.invalidateQueries({ queryKey: ['boards'] });
+            // Also invalidate any specific board queries
+            queryClient.invalidateQueries({ queryKey: ['board'] });
+          } else if (payload.eventType === 'DELETE') {
+            queryClient.invalidateQueries({ queryKey: ['boards'] });
+          }
         }
       )
       .subscribe();
@@ -271,8 +303,16 @@ export function useSupabaseData() {
           schema: 'public',
           table: 'columns'
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['board'] });
+        (payload) => {
+          // Invalidate specific queries based on the change
+          if (payload.eventType === 'INSERT') {
+            queryClient.invalidateQueries({ queryKey: ['boards'] });
+          } else if (payload.eventType === 'UPDATE') {
+            queryClient.invalidateQueries({ queryKey: ['boards'] });
+            queryClient.invalidateQueries({ queryKey: ['board'] });
+          } else if (payload.eventType === 'DELETE') {
+            queryClient.invalidateQueries({ queryKey: ['boards'] });
+          }
         }
       )
       .subscribe();
@@ -314,8 +354,8 @@ export function useSupabaseData() {
       return data;
     },
     onSuccess: (data) => {
+      // Invalidate all board-related queries
       queryClient.invalidateQueries({ queryKey: ['boards'] });
-      // Refresh current board data immediately
       queryClient.invalidateQueries({ queryKey: ['board'] });
       toast({
         title: "Columna Creada",
@@ -332,6 +372,45 @@ export function useSupabaseData() {
     }
   });
 
+  // Delete column mutation
+  const deleteColumnMutation = useMutation({
+    mutationFn: async (columnId: string) => {
+      // First delete all tasks in the column
+      const { error: tasksError } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('column_id', columnId);
+
+      if (tasksError) throw tasksError;
+
+      // Then delete the column
+      const { error } = await supabase
+        .from('columns')
+        .delete()
+        .eq('id', columnId);
+
+      if (error) throw error;
+      return columnId;
+    },
+    onSuccess: (data) => {
+      // Invalidate all board-related queries
+      queryClient.invalidateQueries({ queryKey: ['boards'] });
+      queryClient.invalidateQueries({ queryKey: ['board'] });
+      toast({
+        title: "Columna Eliminada",
+        description: "La columna y todas sus tareas han sido eliminadas.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error deleting column:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la columna.",
+        variant: "destructive",
+      });
+    }
+  });
+
   return {
     boards,
     boardsLoading,
@@ -340,6 +419,7 @@ export function useSupabaseData() {
     createTask: createTaskMutation.mutate,
     updateTask: updateTaskMutation.mutate,
     createColumn: createColumnMutation.mutate,
+    deleteColumn: deleteColumnMutation.mutate,
     isCreatingBoard: createBoardMutation.isPending,
   };
 }

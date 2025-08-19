@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -27,8 +27,16 @@ const priorityIcons = {
 export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description || '');
   const { toast } = useToast();
   const { getTransitionClass } = useOptimizedAnimation();
+
+  // Sync local state when task changes
+  useEffect(() => {
+    setTitle(task.title);
+    setDescription(task.description || '');
+    setIsEditing(false);
+  }, [task.id, task.title, task.description]);
 
   const {
     attributes,
@@ -47,15 +55,56 @@ export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
   };
 
   const handleTitleSave = async () => {
-    if (title.trim() !== task.title && onUpdate) {
-      onUpdate({ id: task.id, title: title.trim() });
+    if (!title.trim()) {
+      setTitle(task.title); // Revert empty title
       setIsEditing(false);
       toast({
-        title: "Tarea Actualizada",
-        description: "El título de la tarea ha sido actualizado.",
+        title: "Error",
+        description: "El título no puede estar vacío.",
+        variant: "destructive",
       });
+      return;
+    }
+
+    if (title.trim() !== task.title && onUpdate) {
+      try {
+        await onUpdate({ id: task.id, title: title.trim() });
+        setIsEditing(false);
+        toast({
+          title: "Tarea Actualizada",
+          description: "El título de la tarea ha sido actualizado.",
+        });
+      } catch (error) {
+        console.error('Error updating task:', error);
+        setTitle(task.title); // Revert on error
+        toast({
+          title: "Error",
+          description: "No se pudo actualizar la tarea.",
+          variant: "destructive",
+        });
+      }
     } else {
       setIsEditing(false);
+    }
+  };
+
+  const handleDescriptionSave = async () => {
+    if (description !== task.description && onUpdate) {
+      try {
+        await onUpdate({ id: task.id, description: description.trim() || null });
+        toast({
+          title: "Descripción Actualizada",
+          description: "La descripción de la tarea ha sido actualizada.",
+        });
+      } catch (error) {
+        console.error('Error updating description:', error);
+        setDescription(task.description || ''); // Revert on error
+        toast({
+          title: "Error",
+          description: "No se pudo actualizar la descripción.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -64,7 +113,17 @@ export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
       handleTitleSave();
     } else if (e.key === 'Escape') {
       setTitle(task.title);
+      setDescription(task.description || '');
       setIsEditing(false);
+    }
+  };
+
+  const handleDescriptionKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleDescriptionSave();
+    } else if (e.key === 'Escape') {
+      setDescription(task.description || '');
     }
   };
 
@@ -97,8 +156,8 @@ export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
     linkElement.click();
     
     toast({
-      title: "Task Exported",
-      description: "Task has been downloaded as JSON file.",
+      title: "Tarea Exportada",
+      description: "La tarea ha sido descargada como archivo JSON.",
     });
   };
 
@@ -120,7 +179,8 @@ export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
       {...listeners}
       className={`group cursor-grab active:cursor-grabbing bg-card/80 backdrop-blur-sm border border-border/50 ${
         getTransitionClass("hover:shadow-lg transition-all duration-200", ""),
-        isDragging ? 'rotate-2 opacity-90' : ''
+        isDragging ? 'rotate-2 opacity-90' : '',
+        isEditing ? 'ring-2 ring-primary/50 shadow-lg' : ''
       }`}
     >
       <CardHeader className="pb-3">
@@ -179,9 +239,38 @@ export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
 
       <CardContent className="pt-0 space-y-3">
         {task.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2">
-            {task.description}
-          </p>
+          <div className="relative group/desc">
+            {isEditing ? (
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onBlur={handleDescriptionSave}
+                onKeyDown={handleDescriptionKeyPress}
+                className="w-full bg-transparent border-none outline-none text-xs text-muted-foreground focus:ring-1 focus:ring-primary rounded px-1 resize-none"
+                rows={2}
+                placeholder="Agregar descripción..."
+              />
+            ) : (
+              <p 
+                className="text-xs text-muted-foreground line-clamp-2 cursor-pointer hover:text-primary transition-colors"
+                onDoubleClick={() => setIsEditing(true)}
+              >
+                {task.description}
+              </p>
+            )}
+          </div>
+        )}
+
+        {!task.description && isEditing && (
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            onBlur={handleDescriptionSave}
+            onKeyDown={handleDescriptionKeyPress}
+            className="w-full bg-transparent border-none outline-none text-xs text-muted-foreground focus:ring-1 focus:ring-primary rounded px-1 resize-none"
+            rows={2}
+            placeholder="Agregar descripción..."
+          />
         )}
 
         <div className="flex items-center gap-2">
@@ -218,7 +307,7 @@ export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
         {task.created_at && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Calendar className="w-3 h-3" />
-            <span>Created: {format(new Date(task.created_at), 'MMM dd')}</span>
+            <span>Creado: {format(new Date(task.created_at), 'MMM dd')}</span>
           </div>
         )}
       </CardContent>
