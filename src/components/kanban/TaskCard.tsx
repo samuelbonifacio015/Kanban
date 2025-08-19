@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Calendar, Download, Edit, Flag, User } from 'lucide-react';
+import { Calendar, Download, Edit, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { Task } from '@/hooks/useSupabaseData';
 import { useToast } from '@/hooks/use-toast';
@@ -13,14 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
+  onUpdate?: (task: Partial<Task>) => void;
 }
 
-const priorityColors = {
-  low: 'bg-blue-100 text-blue-800 border-blue-300',
-  medium: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  high: 'bg-orange-100 text-orange-800 border-orange-300',
-  critical: 'bg-red-100 text-red-800 border-red-300',
-};
 
 const priorityIcons = {
   low: '🟢',
@@ -29,7 +24,7 @@ const priorityIcons = {
   critical: '🔴',
 };
 
-export function TaskCard({ task, onEdit }: TaskCardProps) {
+export function TaskCard({ task, onEdit, onUpdate }: TaskCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const { toast } = useToast();
@@ -51,12 +46,12 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
   };
 
   const handleTitleSave = async () => {
-    if (title.trim() !== task.title) {
-      // TODO: Update task title in Supabase
+    if (title.trim() !== task.title && onUpdate) {
+      onUpdate({ id: task.id, title: title.trim() });
       setIsEditing(false);
       toast({
-        title: "Task Updated",
-        description: "Task title has been updated.",
+        title: "Tarea Actualizada",
+        description: "El título de la tarea ha sido actualizado.",
       });
     } else {
       setIsEditing(false);
@@ -186,9 +181,8 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
         <div className="flex items-center gap-2">
           <Badge 
             variant="outline" 
-            className={`text-xs ${priorityColors[task.priority]} border`}
+            className={`text-xs priority-${task.priority} border`}
           >
-            <Flag className="w-3 h-3 mr-1" />
             {priorityIcons[task.priority]} {task.priority}
           </Badge>
         </div>

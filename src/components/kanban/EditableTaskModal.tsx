@@ -31,6 +31,9 @@ export function EditableTaskModal({
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
 
+  // Predefined tags in English as requested
+  const predefinedTags = ['studies', 'productivity', 'personal', 'entertainment'];
+
   useEffect(() => {
     if (task && mode === 'edit') {
       setTitle(task.title);
@@ -149,13 +152,40 @@ export function EditableTaskModal({
           
           <div className="space-y-2">
             <Label htmlFor="task-tags">Tags</Label>
+            
+            {/* Predefined Tags */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Quick Tags</Label>
+              <div className="flex flex-wrap gap-2">
+                {predefinedTags.map((tag) => (
+                  <Button
+                    key={tag}
+                    type="button"
+                    variant={tags.includes(tag) ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      if (tags.includes(tag)) {
+                        setTags(tags.filter(t => t !== tag));
+                      } else {
+                        setTags([...tags, tag]);
+                      }
+                    }}
+                  >
+                    {tag}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Custom Tag Input */}
             <div className="flex gap-2">
               <Input
                 id="task-tags"
                 value={newTag}
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyDown={handleKeyPress}
-                placeholder="Add a tag..."
+                placeholder="Add custom tag..."
                 className="flex-1"
               />
               <Button

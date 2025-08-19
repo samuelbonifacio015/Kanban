@@ -20,6 +20,7 @@ import { UserProfile } from '@/components/kanban/UserProfile';
 import { KanbanColumn } from '@/components/kanban/KanbanColumn';
 import { AddColumnModal } from '@/components/kanban/AddColumnModal';
 import { BoardSettingsModal } from '@/components/kanban/BoardSettingsModal';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
@@ -32,7 +33,7 @@ export default function Dashboard() {
   const [isBoardSettingsOpen, setIsBoardSettingsOpen] = useState(false);
   const [currentBoard, setCurrentBoard] = useState<BoardWithData | null>(null);
   
-  const { boards, boardsLoading, fetchBoardWithData, createBoard, createTask, updateTask } = useSupabaseData();
+  const { boards, boardsLoading, fetchBoardWithData, createBoard, createTask, updateTask, createColumn } = useSupabaseData();
   const { toast } = useToast();
 
   const sensors = useSensors(
@@ -110,7 +111,9 @@ export default function Dashboard() {
   };
 
   const handleAddColumn = (columnData: { title: string; color: string }) => {
-    // TODO: Implement add column
+    if (currentBoard) {
+      createColumn({ ...columnData, boardId: currentBoard.id });
+    }
     setIsAddColumnOpen(false);
   };
 
@@ -150,6 +153,7 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <UserProfile />
             <Button 
               variant="outline" 
@@ -177,6 +181,7 @@ export default function Dashboard() {
               column={column}
               onAddCard={handleAddTask}
               onEditCard={handleEditTask}
+              onUpdateTask={updateTask}
             />
           ))}
         </div>
@@ -184,7 +189,7 @@ export default function Dashboard() {
         <DragOverlay>
           {activeTask ? (
             <div className="rotate-2 opacity-90">
-              <TaskCard task={activeTask} onEdit={handleEditTask} />
+              <TaskCard task={activeTask} onEdit={handleEditTask} onUpdate={updateTask} />
             </div>
           ) : null}
         </DragOverlay>

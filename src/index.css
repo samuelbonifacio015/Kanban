@@ -141,18 +141,44 @@ All colors MUST be HSL.
 
   /* Priority colors */
   .priority-low {
-    @apply bg-green-500/20 text-green-400 border-green-500/30;
+    @apply bg-priority-low/20 text-priority-low border-priority-low/30;
   }
 
   .priority-medium {
-    @apply bg-yellow-500/20 text-yellow-400 border-yellow-500/30;
+    @apply bg-priority-medium/20 text-priority-medium border-priority-medium/30;
   }
 
   .priority-high {
-    @apply bg-orange-500/20 text-orange-400 border-orange-500/30;
+    @apply bg-priority-high/20 text-priority-high border-priority-high/30;
   }
 
   .priority-critical {
-    @apply bg-red-500/20 text-red-400 border-red-500/30;
+    @apply bg-priority-critical/20 text-priority-critical border-priority-critical/30;
+  }
+
+  /* Performance optimizations */
+  .will-change-transform {
+    will-change: transform;
+  }
+
+  /* Reduce animations on low-end devices */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Memory optimization - prevent layout shifts */
+  .container-optimized {
+    contain: layout;
+  }
+
+  /* GPU acceleration for smooth animations */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
   }
 }

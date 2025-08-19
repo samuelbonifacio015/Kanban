@@ -276,6 +276,52 @@ export function useSupabaseData() {
     };
   }, [user?.id, queryClient]);
 
+  // Create column mutation
+  const createColumnMutation = useMutation({
+    mutationFn: async ({ title, color, boardId }: { title: string; color: string; boardId: string }) => {
+      // Get current columns to calculate position
+      const { data: columns, error: columnsError } = await supabase
+        .from('columns')
+        .select('position')
+        .eq('board_id', boardId)
+        .order('position', { ascending: false })
+        .limit(1);
+
+      if (columnsError) throw columnsError;
+
+      const maxPosition = columns.length > 0 ? columns[0].position : -1;
+
+      const { data, error } = await supabase
+        .from('columns')
+        .insert([{
+          board_id: boardId,
+          title,
+          color,
+          position: maxPosition + 1
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board'] });
+      toast({
+        title: "Columna Creada",
+        description: "Nueva columna agregada al tablero.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error creating column:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo crear la columna.",
+        variant: "destructive",
+      });
+    }
+  });
+
   return {
     boards,
     boardsLoading,
@@ -283,6 +329,7 @@ export function useSupabaseData() {
     createBoard: createBoardMutation.mutate,
     createTask: createTaskMutation.mutate,
     updateTask: updateTaskMutation.mutate,
+    createColumn: createColumnMutation.mutate,
     isCreatingBoard: createBoardMutation.isPending,
   };
 }

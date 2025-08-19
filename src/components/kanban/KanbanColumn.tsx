@@ -11,9 +11,10 @@ interface KanbanColumnProps {
   column: Column & { tasks: Task[] };
   onAddCard: (columnId: string) => void;
   onEditCard?: (task: Task) => void;
+  onUpdateTask?: (task: Partial<Task>) => void;
 }
 
-export function KanbanColumn({ column, onAddCard, onEditCard }: KanbanColumnProps) {
+export function KanbanColumn({ column, onAddCard, onEditCard, onUpdateTask }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
@@ -57,6 +58,7 @@ export function KanbanColumn({ column, onAddCard, onEditCard }: KanbanColumnProp
               key={task.id} 
               task={task} 
               onEdit={onEditCard!}
+              onUpdate={onUpdateTask}
             />
           ))}
         </SortableContext>
