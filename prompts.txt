@@ -1,0 +1,5 @@
+lista de cambios:
+
+- las kanbancolumn no se pueden eliminar. agrega una funcion para ello la cual se pueda acceder desde el button "+" que aparece en cada columna (modal).
+- al ingresar a Board Settings, no se guardan los cambios, incluso al actualizar la pagina no se muestran los cambios guardados.
+- los temas de la app (excluyendo light,dark y system) no están funcionando correctamente, actualizalos y hazlos funcionales. de ser posible agrega otros temas màs para dar color a la app.
